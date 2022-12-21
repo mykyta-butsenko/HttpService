@@ -1,0 +1,7 @@
+{
+  "Settings": {
+    "HostName": "localhost",
+    "Port": 4200,
+    "Backlog": 50
+  }
+}
