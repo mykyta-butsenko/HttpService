@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
 using Microsoft.Extensions.Logging;
 
@@ -8,66 +7,84 @@ namespace HttpServiceServer.Listener
     internal class ListenerService : IListenerService
     {
         private readonly ILogger<ListenerService> _logger;
+        private readonly Socket _listener;
 
-        public ListenerService(ILogger<ListenerService> logger)
+        public ListenerService(ILogger<ListenerService> logger, Socket listener)
         {
             _logger = logger;
+            _listener = listener;
         }
 
-        private static async Task<IPAddress> GetIpAddress(string hostName)
+        public async Task Listen()
         {
-            var host = await Dns.GetHostEntryAsync(hostName).ConfigureAwait(false);
-            return host.AddressList.First(address => address.AddressFamily == AddressFamily.InterNetwork) ??
-                   throw new Exception("No network adapters with an IPv4 address in the system!");
+            var handler = await _listener.AcceptAsync().ConfigureAwait(false);
+
+            var buffer = new byte[1_024];
+            var bytesReceived = await handler.ReceiveAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+            var receivedMessage = Encoding.UTF8.GetString(buffer, 0, bytesReceived);
+            _logger.LogInformation("Received a message = {message} with length = {length}.", receivedMessage,
+                bytesReceived);
+
+            await ProcessReceivedMessage(handler, receivedMessage).ConfigureAwait(false);
+
+            handler.Shutdown(SocketShutdown.Both);
         }
 
-        public async Task<IEnumerable<string>> Listen(ListenerServiceConfig serviceConfig)
+        private async Task ProcessReceivedMessage(Socket handler, string receivedMessage)
         {
-            _logger.LogInformation("Service {service} has started.", nameof(ListenerService));
-            _logger.LogInformation("Listening to host name = {hostName} and port = {port}...", serviceConfig.HostName,
-                serviceConfig.Port);
-
-            var ipAddress = await GetIpAddress(serviceConfig.HostName);
-            var ipEndPoint = new IPEndPoint(ipAddress, serviceConfig.Port);
-
-            using Socket listener = new(
-                ipEndPoint.AddressFamily,
-                SocketType.Stream,
-                ProtocolType.Tcp);
-
-            listener.Bind(ipEndPoint);
-            listener.Listen(serviceConfig.Backlog);
-
-            var receivedMessages = new List<string>();
-            var handler = await listener.AcceptAsync().ConfigureAwait(false);
-
-            while (true)
+            var receivedMessageSplit = receivedMessage.Split(Environment.NewLine);
+            var requestUrl = receivedMessageSplit[0];
+            if (requestUrl.Contains(FilePath.Favicon, StringComparison.OrdinalIgnoreCase))
             {
-                var buffer = new byte[1_024];
-                var bytesReceived = await handler.ReceiveAsync(buffer, SocketFlags.None).ConfigureAwait(false);
-                var receivedMessage = Encoding.UTF8.GetString(buffer, 0, bytesReceived);
-                receivedMessages.Add(receivedMessage);
-
-                var indexPagePath = FilePath.IndexPagePath;
-                var indexPageContent = await File.ReadAllTextAsync(indexPagePath).ConfigureAwait(false);
-                var indexPageContentBytes = Encoding.UTF8.GetBytes(indexPageContent);
-
-                const string statusLine = "HTTP/1.1 200 OK\r\n";
-                const string responseHeader = "Content-Type: text/html\r\n";
-
-                await handler.SendAsync(Encoding.UTF8.GetBytes(statusLine));
-                await handler.SendAsync(Encoding.UTF8.GetBytes(responseHeader));
-                await handler.SendAsync("\r\n"u8.ToArray());
-                await handler.SendAsync(indexPageContentBytes);
-                await handler.SendAsync("\r\n"u8.ToArray());
-
-                handler.Close();
-                break;
+                // It means the browser requested the favicon; this request is normally received after sending HTML page as a response
+                await SendFaviconResponse(handler).ConfigureAwait(false);
             }
+            else if (requestUrl.Contains("GET / HTTP/1.1"))
+            {
+                // It means the browser requested us for the first time, therefore it needs HTML as a response
+                await SendHtmlResponse(handler).ConfigureAwait(false);
+            }
+            else
+            {
+                // It means the browser requested something wrong
+                await SendErrorResponse(handler).ConfigureAwait(false);
+            }
+        }
 
+        private async Task SendHtmlResponse(Socket handler)
+        {
+            const string statusLine = "HTTP/1.1 200 OK";
+            const string pageResponseHeader = "Content-Type: text/html";
+            var indexHtmlContent = await File.ReadAllTextAsync(FilePath.IndexPagePath).ConfigureAwait(false);
 
-            _logger.LogInformation("Service {service} has finished.", nameof(ListenerService));
-            return receivedMessages;
+            _logger.LogInformation("Sending the Index page = {indexPage} as a response...", FilePath.IndexPagePath);
+            await handler.SendAsync(statusLine.AppendNewLine().ToBytes()).ConfigureAwait(false);
+            await handler.SendAsync(pageResponseHeader.AppendNewLine().ToBytes()).ConfigureAwait(false);
+            await handler.SendAsync(indexHtmlContent.AppendNewLine().ToBytes()).ConfigureAwait(false);
+            _logger.LogInformation("Service {service} sent HTML response.", nameof(ListenerService));
+        }
+
+        private async Task SendFaviconResponse(Socket handler)
+        {
+            const string statusLine = "HTTP/1.1 200 OK";
+            const string faviconResponseHeader = "Content-Type: image/x-icon";
+            var faviconContent = await File.ReadAllBytesAsync(FilePath.FaviconPath).ConfigureAwait(false);
+
+            _logger.LogInformation("Sending the Favicon = {favicon} as a response...", FilePath.FaviconPath);
+            await handler.SendAsync(statusLine.AppendNewLine().ToBytes()).ConfigureAwait(false);
+            await handler.SendAsync(faviconResponseHeader.AppendNewLine().ToBytes()).ConfigureAwait(false);
+            await handler.SendAsync(faviconContent).ConfigureAwait(false);
+            await handler.SendAsync(Environment.NewLine.ToBytes()).ConfigureAwait(false);
+            _logger.LogInformation("Service {service} sent Favicon response.", nameof(ListenerService));
+        }
+
+        private async Task SendErrorResponse(Socket handler)
+        {
+            const string statusLine = "HTTP/1.1 400 Bad Request";
+
+            _logger.LogInformation("Sending 400 Bad Request error response");
+            await handler.SendAsync(statusLine.AppendNewLine().ToBytes()).ConfigureAwait(false);
+            _logger.LogInformation("Service {service} sent 400 Bad Request response.", nameof(ListenerService));
         }
     }
 }

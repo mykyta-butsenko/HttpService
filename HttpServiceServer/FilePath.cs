@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Reflection;
 
 namespace HttpServiceServer
 {
@@ -11,13 +6,13 @@ namespace HttpServiceServer
     {
         private const string FilesDir = "Files";
         private const string IndexPage = "Index.html";
-        private const string ErrorPage = "Error.html";
+        public const string Favicon = "favicon.ico";
 
         private static readonly string FilesDirPath =
             Path.Join(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), FilesDir);
 
         public static string IndexPagePath => Path.Join(FilesDirPath, IndexPage);
 
-        public static string ErrorPagePath => Path.Join(FilesDirPath, ErrorPage);
+        public static string FaviconPath => Path.Combine(FilesDirPath, Favicon);
     }
 }
