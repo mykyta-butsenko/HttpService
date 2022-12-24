@@ -2,6 +2,6 @@
 {
     internal interface IListenerService
     {
-        public Task Listen();
+        void StartListening();
     }
 }

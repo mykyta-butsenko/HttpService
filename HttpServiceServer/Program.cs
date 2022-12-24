@@ -1,39 +1,25 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using HttpServiceServer.Listener;
+using HttpServiceServer.MessageProcessing;
+using HttpServiceServer.Queue;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace HttpServiceServer
 {
     internal class Program
     {
-        private static ListenerServiceConfig GetListenerServiceConfig()
+        private static ListenerServiceConfig CreateListenerServiceConfig()
         {
             var configurationBuilder = new ConfigurationBuilder().AddJsonFile("serviceConfig.json");
             var configurationRoot = configurationBuilder.Build();
             var listenerServiceConfig = configurationRoot.GetRequiredSection("Settings").Get<ListenerServiceConfig>();
             return listenerServiceConfig ??
                    throw new ArgumentNullException(nameof(listenerServiceConfig), "Parameter cannot be null!");
-        }
-
-        private static async Task<IServiceCollection> ConfigureServices(ListenerServiceConfig listenerServiceConfig)
-        {
-            IServiceCollection services = new ServiceCollection();
-            services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
-
-            var listener = await CreateListener(listenerServiceConfig).ConfigureAwait(false);
-            services.AddScoped<IListenerService>(provider =>
-                new ListenerService(provider.GetRequiredService<ILogger<ListenerService>>(), listener));
-            return services;
-        }
-
-        private static async Task<IPAddress> GetIpAddress(string hostName)
-        {
-            var host = await Dns.GetHostEntryAsync(hostName).ConfigureAwait(false);
-            return host.AddressList.First(address => address.AddressFamily == AddressFamily.InterNetwork) ??
-                   throw new Exception("No network adapters with an IPv4 address in the system!");
         }
 
         private static async Task<Socket> CreateListener(ListenerServiceConfig serviceConfig)
@@ -47,21 +33,44 @@ namespace HttpServiceServer
             return listener;
         }
 
+        private static async Task<IPAddress> GetIpAddress(string hostName)
+        {
+            var host = await Dns.GetHostEntryAsync(hostName).ConfigureAwait(false);
+            return host.AddressList.First(address => address.AddressFamily == AddressFamily.InterNetwork) ??
+                   throw new Exception("No network adapters with an IPv4 address in the system!");
+        }
+
         static async Task Main()
         {
-            var services = await ConfigureServices(GetListenerServiceConfig()).ConfigureAwait(false);
-            var serviceProvider = services.BuildServiceProvider();
+            var config = CreateListenerServiceConfig();
+            var listener = await CreateListener(config).ConfigureAwait(false);
+            var hostBuilder = new HostBuilder()
+                .ConfigureServices(services =>
+                {
+                    services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
+                    services.AddSingleton<IProcessMessageTaskQueue>(_ =>
+                        new ProcessMessageTaskQueue(config.Backlog));
+                    services.AddSingleton<IListenerService>(provider =>
+                        new ListenerService(
+                            logger: provider.GetRequiredService<ILogger<ListenerService>>(),
+                            listener: listener,
+                            messageQueue: provider.GetRequiredService<IProcessMessageTaskQueue>(),
+                            applicationLifetime: new ApplicationLifetime(provider
+                                .GetRequiredService<ILogger<ApplicationLifetime>>())));
+                    services.AddSingleton<IMessageProcessingService, MessageProcessingService>();
+                    services.AddHostedService<MessageQueueProcessingService>();
+                }).Build();
 
-            var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+            var logger = hostBuilder.Services.GetRequiredService<ILogger<Program>>();
             logger.LogInformation("Starting {service} service...", nameof(ListenerService));
 
-            var listenerService = serviceProvider.GetRequiredService<IListenerService>();
+            var listenerService = hostBuilder.Services.GetRequiredService<IListenerService>();
             try
             {
-                while (true)
-                {
-                    await listenerService.Listen().ConfigureAwait(false);
-                }
+                // Run Listening of incoming requests in a background thread. These requests get written to a queue...
+                listenerService.StartListening();
+                // ...which gets processed by our MessageQueueProcessingService.
+                await hostBuilder.RunAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
