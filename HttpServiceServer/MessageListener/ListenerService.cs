@@ -13,7 +13,8 @@ namespace HttpServiceServer.MessageListener
         private readonly IMessageQueue _messageQueue;
         private readonly CancellationToken _cancellationToken;
 
-        public ListenerService(ILogger<ListenerService> logger, Socket listener, IMessageQueue messageQueue, IHostApplicationLifetime applicationLifetime)
+        public ListenerService(ILogger<ListenerService> logger, Socket listener, IMessageQueue messageQueue,
+            IHostApplicationLifetime applicationLifetime)
         {
             _logger = logger;
             _listener = listener;
