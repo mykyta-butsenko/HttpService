@@ -1,19 +1,19 @@
 ﻿using System.Net.Sockets;
 using System.Text;
-using HttpServiceServer.Queue;
+using HttpServiceServer.MessageQueue;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace HttpServiceServer.Listener
+namespace HttpServiceServer.MessageListener
 {
     internal class ListenerService : IListenerService
     {
         private readonly ILogger<ListenerService> _logger;
         private readonly Socket _listener;
-        private readonly IProcessMessageTaskQueue _messageQueue;
+        private readonly IMessageQueue _messageQueue;
         private readonly CancellationToken _cancellationToken;
 
-        public ListenerService(ILogger<ListenerService> logger, Socket listener, IProcessMessageTaskQueue messageQueue, IHostApplicationLifetime applicationLifetime)
+        public ListenerService(ILogger<ListenerService> logger, Socket listener, IMessageQueue messageQueue, IHostApplicationLifetime applicationLifetime)
         {
             _logger = logger;
             _listener = listener;
@@ -23,7 +23,7 @@ namespace HttpServiceServer.Listener
 
         public void StartListening()
         {
-            _logger.LogInformation($"{nameof(ListenerService)} loop is starting.");
+            _logger.LogInformation($"{nameof(ListenerService)} is starting.");
             Task.Run(async () => await Listen().ConfigureAwait(false), _cancellationToken);
         }
 

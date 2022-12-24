@@ -1,6 +1,6 @@
-﻿using HttpServiceServer.Listener;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using System.Net.Sockets;
+using HttpServiceServer.MessageListener;
 
 namespace HttpServiceServer.MessageProcessing
 {

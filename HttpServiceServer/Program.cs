@@ -1,8 +1,8 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using HttpServiceServer.Listener;
+using HttpServiceServer.MessageListener;
 using HttpServiceServer.MessageProcessing;
-using HttpServiceServer.Queue;
+using HttpServiceServer.MessageQueue;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -48,13 +48,13 @@ namespace HttpServiceServer
                 .ConfigureServices(services =>
                 {
                     services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
-                    services.AddSingleton<IProcessMessageTaskQueue>(_ =>
-                        new ProcessMessageTaskQueue(config.Backlog));
+                    services.AddSingleton<IMessageQueue>(_ =>
+                        new MessageQueue.MessageQueue(config.Backlog));
                     services.AddSingleton<IListenerService>(provider =>
                         new ListenerService(
                             logger: provider.GetRequiredService<ILogger<ListenerService>>(),
                             listener: listener,
-                            messageQueue: provider.GetRequiredService<IProcessMessageTaskQueue>(),
+                            messageQueue: provider.GetRequiredService<IMessageQueue>(),
                             applicationLifetime: new ApplicationLifetime(provider
                                 .GetRequiredService<ILogger<ApplicationLifetime>>())));
                     services.AddSingleton<IMessageProcessingService, MessageProcessingService>();

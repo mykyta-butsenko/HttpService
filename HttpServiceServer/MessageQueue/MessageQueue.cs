@@ -1,20 +1,19 @@
 ﻿using System.Net.Sockets;
 using System.Threading.Channels;
 
-namespace HttpServiceServer.Queue
+namespace HttpServiceServer.MessageQueue
 {
-    internal class ProcessMessageTaskQueue : IProcessMessageTaskQueue
+    internal class MessageQueue : IMessageQueue
     {
         private readonly Channel<(Socket, string)> _messageQueue;
 
-        public ProcessMessageTaskQueue(int capacity)
+        public MessageQueue(int capacity)
         {
             BoundedChannelOptions options = new(capacity)
             {
                 FullMode = BoundedChannelFullMode.Wait
             };
             _messageQueue = Channel.CreateBounded<(Socket, string)>(options);
-            //_messageQueue = Channel.CreateUnbounded<(Socket, string)>();
         }
 
         public async ValueTask QueueMessageAsync((Socket handler, string receivedMessage) workItem)

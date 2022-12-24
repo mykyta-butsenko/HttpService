@@ -1,8 +1,8 @@
 ﻿using System.Net.Sockets;
 
-namespace HttpServiceServer.Queue
+namespace HttpServiceServer.MessageQueue
 {
-    internal interface IProcessMessageTaskQueue
+    internal interface IMessageQueue
     {
         ValueTask QueueMessageAsync((Socket handler, string receivedMessage) workItem);
 

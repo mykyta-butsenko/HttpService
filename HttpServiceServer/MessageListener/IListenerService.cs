@@ -1,4 +1,4 @@
-﻿namespace HttpServiceServer.Listener
+﻿namespace HttpServiceServer.MessageListener
 {
     internal interface IListenerService
     {

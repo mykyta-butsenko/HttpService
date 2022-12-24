@@ -1,17 +1,17 @@
-﻿using Microsoft.Extensions.Logging;
-using HttpServiceServer.MessageProcessing;
+﻿using HttpServiceServer.MessageProcessing;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-namespace HttpServiceServer.Queue
+namespace HttpServiceServer.MessageQueue
 {
     internal class MessageQueueProcessingService : BackgroundService
     {
         private readonly ILogger<MessageQueueProcessingService> _logger;
-        private readonly IProcessMessageTaskQueue _messageQueue;
+        private readonly IMessageQueue _messageQueue;
         private readonly IMessageProcessingService _messageProcessingService;
 
         public MessageQueueProcessingService(ILogger<MessageQueueProcessingService> logger,
-            IProcessMessageTaskQueue messageQueue, IMessageProcessingService messageProcessingService)
+            IMessageQueue messageQueue, IMessageProcessingService messageProcessingService)
         {
             _logger = logger;
             _messageQueue = messageQueue;
