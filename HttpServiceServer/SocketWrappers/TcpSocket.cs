@@ -3,7 +3,8 @@ using System.Net.Sockets;
 
 namespace HttpServiceServer.SocketWrappers
 {
-    internal class TcpSocket : ISocket
+    // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
+    public class TcpSocket : ISocket
     {
         private readonly Socket _socket;
 
@@ -17,7 +18,7 @@ namespace HttpServiceServer.SocketWrappers
             _socket = new Socket(addressFamily, SocketType.Stream, ProtocolType.Tcp);
         }
 
-        public Task<int> SendAsync(byte[] buffer)
+        public virtual Task<int> SendAsync(byte[] buffer)
         {
             if (buffer == null)
             {
@@ -62,12 +63,12 @@ namespace HttpServiceServer.SocketWrappers
             return await _socket.ReceiveAsync(buffer, SocketFlags.None);
         }
 
-        public void Shutdown()
+        public virtual void Shutdown()
         {
             _socket.Shutdown(SocketShutdown.Both);
         }
 
-        public void Close()
+        public virtual void Close()
         {
             _socket.Close();
         }
@@ -75,6 +76,7 @@ namespace HttpServiceServer.SocketWrappers
         public void Dispose()
         {
             _socket.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

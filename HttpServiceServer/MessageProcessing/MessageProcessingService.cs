@@ -63,7 +63,6 @@ namespace HttpServiceServer.MessageProcessing
 
             _logger.LogInformation("Sending the Index page = {indexPage} as a response...", FilePath.IndexPagePath);
             await handler.SendAsync(statusLine.AppendNewLine().ToBytes()).ConfigureAwait(false);
-            
             await handler.SendAsync(pageResponseHeader.AppendNewLine().ToBytes()).ConfigureAwait(false);
             await handler.SendAsync(indexHtmlContent.AppendNewLine().ToBytes()).ConfigureAwait(false);
             _logger.LogInformation("Service {service} sent HTML response.", nameof(ListenerService));
