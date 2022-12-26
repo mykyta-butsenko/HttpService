@@ -9,6 +9,11 @@ namespace HttpServiceServer.MessageQueue
 
         public MessageQueue(int capacity)
         {
+            if (capacity <= 0)
+            {
+                throw new ArgumentException("Value of the parameter should be bigger that 0 (zero)", nameof(capacity));
+            }
+
             BoundedChannelOptions options = new(capacity)
             {
                 FullMode = BoundedChannelFullMode.Wait

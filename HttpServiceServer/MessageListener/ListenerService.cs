@@ -22,12 +22,22 @@ namespace HttpServiceServer.MessageListener
 
         public void StartListening(ISocket listener)
         {
+            if (listener is null)
+            {
+                throw new ArgumentNullException(nameof(listener));
+            }
+
             _logger.LogInformation($"{nameof(ListenerService)} is starting.");
             Task.Run(async () => await Listen(listener).ConfigureAwait(false), _cancellationToken);
         }
 
         private async Task Listen(ISocket listener)
         {
+            if (listener is null)
+            {
+                throw new ArgumentNullException(nameof(listener));
+            }
+
             while (!_cancellationToken.IsCancellationRequested)
             {
                 var handler = await listener.AcceptAsync(_cancellationToken).ConfigureAwait(false);

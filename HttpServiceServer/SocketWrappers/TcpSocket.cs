@@ -19,16 +19,31 @@ namespace HttpServiceServer.SocketWrappers
 
         public Task<int> SendAsync(byte[] buffer)
         {
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(nameof(buffer));
+            }
+
             return _socket.SendAsync(buffer);
         }
 
         public void Bind(IPEndPoint ipEndPoint)
         {
+            if (ipEndPoint == null)
+            {
+                throw new ArgumentNullException(nameof(ipEndPoint));
+            }
+
             _socket.Bind(ipEndPoint);
         }
 
         public void Listen(int backlog)
         {
+            if (backlog <= 0)
+            {
+                throw new ArgumentException("Value of the parameter should be bigger that 0 (zero)", nameof(backlog));
+            }
+
             _socket.Listen(backlog);
         }
 
@@ -39,6 +54,11 @@ namespace HttpServiceServer.SocketWrappers
 
         public async Task<int> ReceiveAsync(byte[] buffer)
         {
+            if (buffer == null)
+            {
+                throw new ArgumentNullException(nameof(buffer));
+            }
+
             return await _socket.ReceiveAsync(buffer, SocketFlags.None);
         }
 

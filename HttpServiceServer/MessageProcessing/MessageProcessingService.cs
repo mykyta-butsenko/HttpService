@@ -52,6 +52,11 @@ namespace HttpServiceServer.MessageProcessing
 
         private async Task SendHtmlResponse(ISocket handler)
         {
+            if (handler is null)
+            {
+                throw new ArgumentNullException(nameof(handler));
+            }
+
             const string statusLine = "HTTP/1.1 200 OK";
             const string pageResponseHeader = "Content-Type: text/html";
             var indexHtmlContent = await File.ReadAllTextAsync(FilePath.IndexPagePath).ConfigureAwait(false);
@@ -66,6 +71,11 @@ namespace HttpServiceServer.MessageProcessing
 
         private async Task SendFaviconResponse(ISocket handler)
         {
+            if (handler is null)
+            {
+                throw new ArgumentNullException(nameof(handler));
+            }
+
             const string statusLine = "HTTP/1.1 200 OK";
             const string faviconResponseHeader = "Content-Type: image/x-icon";
             var faviconContent = await File.ReadAllBytesAsync(FilePath.FaviconPath).ConfigureAwait(false);
@@ -80,6 +90,11 @@ namespace HttpServiceServer.MessageProcessing
 
         private async Task SendErrorResponse(ISocket handler)
         {
+            if (handler is null)
+            {
+                throw new ArgumentNullException(nameof(handler));
+            }
+
             const string statusLine = "HTTP/1.1 400 Bad Request";
 
             _logger.LogInformation("Sending 400 Bad Request error response");
