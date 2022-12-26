@@ -1,11 +1,11 @@
-﻿using System.Net.Sockets;
+﻿using HttpServiceServer.SocketWrappers;
 using System.Threading.Channels;
 
 namespace HttpServiceServer.MessageQueue
 {
     internal class MessageQueue : IMessageQueue
     {
-        private readonly Channel<(Socket, string)> _messageQueue;
+        private readonly Channel<(ISocket, string)> _messageQueue;
 
         public MessageQueue(int capacity)
         {
@@ -13,10 +13,10 @@ namespace HttpServiceServer.MessageQueue
             {
                 FullMode = BoundedChannelFullMode.Wait
             };
-            _messageQueue = Channel.CreateBounded<(Socket, string)>(options);
+            _messageQueue = Channel.CreateBounded<(ISocket, string)>(options);
         }
 
-        public async ValueTask QueueMessageAsync((Socket handler, string receivedMessage) workItem)
+        public async Task QueueMessageAsync((ISocket handler, string receivedMessage) workItem)
         {
             if (workItem.handler is null || workItem.receivedMessage is null)
             {
@@ -26,7 +26,7 @@ namespace HttpServiceServer.MessageQueue
             await _messageQueue.Writer.WriteAsync(workItem).ConfigureAwait(false);
         }
 
-        public IAsyncEnumerable<(Socket handler, string receivedMessage)> DequeueAllMessagesAsync(
+        public IAsyncEnumerable<(ISocket handler, string receivedMessage)> DequeueAllMessagesAsync(
             CancellationToken cancellationToken)
         {
             return _messageQueue.Reader.ReadAllAsync(cancellationToken);

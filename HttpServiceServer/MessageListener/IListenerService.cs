@@ -1,7 +1,9 @@
-﻿namespace HttpServiceServer.MessageListener
+﻿using HttpServiceServer.SocketWrappers;
+
+namespace HttpServiceServer.MessageListener
 {
     internal interface IListenerService
     {
-        void StartListening();
+        void StartListening(ISocket listener);
     }
 }

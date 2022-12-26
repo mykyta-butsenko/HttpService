@@ -1,9 +1,9 @@
-﻿using System.Net.Sockets;
+﻿using HttpServiceServer.SocketWrappers;
 
 namespace HttpServiceServer.MessageProcessing
 {
-    internal interface IMessageProcessingService
+    public interface IMessageProcessingService
     {
-        public Task ProcessReceivedMessage(Socket handler, string receivedMessage);
+        public Task ProcessReceivedMessage(ISocket handler, string receivedMessage);
     }
 }

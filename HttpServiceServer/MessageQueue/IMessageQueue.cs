@@ -1,11 +1,11 @@
-﻿using System.Net.Sockets;
+﻿using HttpServiceServer.SocketWrappers;
 
 namespace HttpServiceServer.MessageQueue
 {
     internal interface IMessageQueue
     {
-        ValueTask QueueMessageAsync((Socket handler, string receivedMessage) workItem);
+        Task QueueMessageAsync((ISocket handler, string receivedMessage) workItem);
 
-        IAsyncEnumerable<(Socket handler, string receivedMessage)> DequeueAllMessagesAsync(CancellationToken cancellationToken);
+        IAsyncEnumerable<(ISocket handler, string receivedMessage)> DequeueAllMessagesAsync(CancellationToken cancellationToken);
     }
 }

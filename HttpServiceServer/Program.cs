@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using HttpServiceServer.MessageListener;
 using HttpServiceServer.MessageProcessing;
 using HttpServiceServer.MessageQueue;
+using HttpServiceServer.SocketWrappers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,12 +23,11 @@ namespace HttpServiceServer
                    throw new ArgumentNullException(nameof(listenerServiceConfig), "Parameter cannot be null!");
         }
 
-        private static async Task<Socket> CreateListener(ListenerServiceConfig serviceConfig)
+        private static async Task<ISocket> CreateListener(ListenerServiceConfig serviceConfig)
         {
             var ipAddress = await GetIpAddress(serviceConfig.HostName).ConfigureAwait(false);
             var ipEndPoint = new IPEndPoint(ipAddress, serviceConfig.Port);
-
-            Socket listener = new(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            var listener = new TcpSocket(ipEndPoint.AddressFamily);
             listener.Bind(ipEndPoint);
             listener.Listen(serviceConfig.Backlog);
             return listener;
@@ -43,19 +43,13 @@ namespace HttpServiceServer
         static async Task Main()
         {
             var config = CreateListenerServiceConfig();
-            var listener = await CreateListener(config).ConfigureAwait(false);
             var hostBuilder = new HostBuilder()
                 .ConfigureServices(services =>
                 {
                     services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
+                    services.AddSingleton<IHostApplicationLifetime, ApplicationLifetime>();
                     services.AddSingleton<IMessageQueue>(_ => new MessageQueue.MessageQueue(config.Backlog));
-                    services.AddSingleton<IListenerService>(provider =>
-                        new ListenerService(
-                            logger: provider.GetRequiredService<ILogger<ListenerService>>(),
-                            listener: listener,
-                            messageQueue: provider.GetRequiredService<IMessageQueue>(),
-                            applicationLifetime: new ApplicationLifetime(
-                                provider.GetRequiredService<ILogger<ApplicationLifetime>>())));
+                    services.AddSingleton<IListenerService, ListenerService>();
                     services.AddSingleton<IMessageProcessingService, MessageProcessingService>();
                     services.AddHostedService<MessageQueueProcessingService>();
                 }).Build();
@@ -68,10 +62,11 @@ namespace HttpServiceServer
                 nameof(ListenerService), nameof(MessageQueueProcessingService));
 
             var listenerService = hostBuilder.Services.GetRequiredService<IListenerService>();
+            var listener = await CreateListener(config).ConfigureAwait(false);
             try
             {
                 // Run Listening of incoming requests in a background thread. These requests get written to a queue...
-                listenerService.StartListening();
+                listenerService.StartListening(listener);
                 // ...which gets processed by our MessageQueueProcessingService.
                 await hostBuilder.RunAsync().ConfigureAwait(false);
             }
